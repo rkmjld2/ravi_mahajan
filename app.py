@@ -1,5 +1,6 @@
 # app.py
 # Blood Report Analyzer with Groq API - suitable for Streamlit Cloud / GitHub
+
 import streamlit as st
 import pandas as pd
 from io import StringIO
@@ -19,7 +20,7 @@ from langchain_groq import ChatGroq  # Groq client
 
 st.set_page_config(page_title="Blood Report Analyzer • Groq", layout="wide")
 
-# Groq API Key handling (use secrets on cloud)
+# ── Groq API Key handling ────────────────────────────────────────────────
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
     with st.sidebar:
@@ -28,16 +29,20 @@ if not api_key:
     if not api_key:
         st.warning("Please enter your Groq API key to use the app.")
         st.stop()
+
 st.session_state.groq_api_key = api_key
 
-# Embeddings (works everywhere)
+# ── Embeddings ───────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_embeddings():
-    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device': 'cpu'})
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={'device': 'cpu'}
+    )
 
 embeddings = load_embeddings()
 
-# Session state
+# ── Session state ────────────────────────────────────────────────────────
 if "rag_chain" not in st.session_state:
     st.session_state.rag_chain = None
 if "messages" not in st.session_state:
@@ -51,14 +56,23 @@ st.caption("Paste → Edit table → Process → Ask questions • Powered by Gr
 tab1, tab2 = st.tabs(["📊 Paste & Edit Table", "ℹ️ How to use"])
 
 with tab1:
-    st.markdown("Paste your blood report table (from PDF, lab website, WhatsApp, Excel, etc.)\nBest results when columns are separated by **comma**, **tab** or **spaces**.")
-    raw_text = st.text_area("1. Paste your report table here", height=240, value="""Test,Result,Unit,Reference Range,Flag
+    st.markdown(
+        "Paste your blood report table (from PDF, lab website, WhatsApp, Excel, etc.)\n"
+        "Best results when columns are separated by **comma**, **tab** or **spaces**."
+    )
+
+    raw_text = st.text_area(
+        "1. Paste your report table here",
+        height=240,
+        value="""Test,Result,Unit,Reference Range,Flag
 Hemoglobin,12.4,g/dL,13.0 - 17.0,L
 WBC,8.2,10^3/µL,4.0 - 11.0,
 Glucose (Fasting),102,mg/dL,70 - 99,H
 Creatinine,1.1,mg/dL,0.6 - 1.2,
 ALT,45,U/L,7 - 56,
-Total Cholesterol,210,mg/dL,<200,H""", help="Copy table from PDF viewer, lab portal, Excel or text message")
+Total Cholesterol,210,mg/dL,<200,H""",
+        help="Copy table from PDF viewer, lab portal, Excel or text message"
+    )
 
     if st.button("2. Parse text → Show editable table", type="primary", use_container_width=True):
         if raw_text.strip():
@@ -84,7 +98,9 @@ Total Cholesterol,210,mg/dL,<200,H""", help="Copy table from PDF viewer, lab por
                 "Result": st.column_config.NumberColumn("Result", min_value=0.0, step=0.01),
                 "Unit": st.column_config.TextColumn("Unit"),
                 "Reference Range": st.column_config.TextColumn("Reference range"),
-                "Flag": st.column_config.SelectboxColumn("Flag", options=["", "H", "L", "H*", "L*", "Critical", "Abnormal"], required=False),
+                "Flag": st.column_config.SelectboxColumn(
+                    "Flag", options=["", "H", "L", "H*", "L*", "Critical", "Abnormal"], required=False
+                ),
             }
         )
 
@@ -112,40 +128,58 @@ Answer (concise, factual, include unit/range/flag):"""
                 prompt = ChatPromptTemplate.from_template(prompt_template)
 
                 # Groq LLM
-                llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.15, max_tokens=1200, api_key=st.session_state.groq_api_key)
+                llm = ChatGroq(
+                    model="llama-3.3-70b-versatile",
+                    temperature=0.15,
+                    max_tokens=1200,
+                    api_key=st.session_state.groq_api_key
+                )
                 qa_chain = create_stuff_documents_chain(llm, prompt)
                 rag_chain = create_retrieval_chain(retriever, qa_chain)
                 st.session_state.rag_chain = rag_chain
                 st.success(f"Table processed! ({len(chunks)} chunks) → Ask questions now.")
 
-            # Save to TiDB Cloud (added)
+            # Save to TiDB Cloud
             try:
                 conn = mysql.connector.connect(
                     host=st.secrets["DB_HOST"],
                     port=int(st.secrets["DB_PORT"]),
                     user=st.secrets["DB_USER"],
                     password=st.secrets["DB_PASSWORD"],
-                    database=st.secrets["DB_NAME"],
-                    ssl_ca="isrgrootx1.pem",  # File must be in app root
+                    database=st.secrets["DB_NAME"],           # should be "medical1_app"
+                    ssl_ca="isrgrootx1.pem",
                     ssl_verify_cert=True,
                     ssl_verify_identity=True
                 )
                 cursor = conn.cursor()
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                inserted_count = 0
                 for _, row in edited_df.iterrows():
                     cursor.execute(
-                        "INSERT INTO blood_reports (timestamp, test_name, result, unit, ref_range, flag) VALUES (%s, %s, %s, %s, %s, %s)",
-                        (timestamp, row.get("Test", ""), row.get("Result", 0.0), row.get("Unit", ""), row.get("Reference Range", ""), row.get("Flag", ""))
+                        """
+                        INSERT INTO blood_reports 
+                        (timestamp, test_name, result, unit, ref_range, flag) 
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            timestamp,
+                            row.get("Test", ""),
+                            float(row.get("Result", 0.0)),
+                            row.get("Unit", ""),
+                            row.get("Reference Range", ""),
+                            row.get("Flag", "")
+                        )
                     )
+                    inserted_count += 1
+
                 conn.commit()
                 conn.close()
-                st.success("Report table saved to TiDB database!")
+                st.success(f"Report saved! {inserted_count} rows added to TiDB database.")
             except Exception as e:
                 st.error(f"Error saving to database: {str(e)}")
 
-# (The rest of your code remains the same: Chat area, Download Q&A, Recommendations. Copy-paste it from your original code here.)
-
-    # ── Chat area ────────────────────────────────────────
+    # ── Chat area ────────────────────────────────────────────────────────
     if st.session_state.rag_chain is not None:
         st.divider()
         st.markdown("### Ask questions about the current report")
@@ -174,52 +208,40 @@ Answer (concise, factual, include unit/range/flag):"""
 
             st.session_state.messages.append({"role": "assistant", "content": answer})
 
-        # ── Download Q&A ────────────────────────────────────────────────
+        # ── Download Q&A ──────────────────────────────────────────────────
         if st.session_state.messages:
             st.markdown("---")
-
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
             md_content = "# Blood Report Q&A\n"
             md_content += f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
             for msg in st.session_state.messages:
                 if msg["role"] == "user":
                     md_content += f"**You:**\n{msg['content']}\n\n"
                 else:
                     md_content += f"**Assistant:**\n{msg['content']}\n\n"
-                    md_content += "---\n\n"
+            md_content += "---\n\n"
 
-            # Download button
             st.download_button(
                 label="📥 Download this Q&A conversation",
                 data=md_content,
                 file_name=f"blood_report_qa_{timestamp}.md",
                 mime="text/markdown",
-                help="Saves all questions and answers in nicely formatted markdown",
-                use_container_width=False
+                help="Saves all questions and answers in nicely formatted markdown"
             )
 
-        # ── Recommendation interface ───────────────────────────────────────────
-        if st.session_state.rag_chain is not None:
-            st.divider()
-            st.subheader("General Recommendations (not medical advice)")
+        # ── Recommendation interface ──────────────────────────────────────
+        st.divider()
+        st.subheader("General Recommendations (not medical advice)")
 
-            if st.button("Get Recommendations for Abnormal Values", type="primary", use_container_width=True):
-                with st.spinner("Generating general suggestions..."):
-                    # Safety check for API key
-                    if "groq_api_key" not in st.session_state or not st.session_state.groq_api_key:
-                        st.error("Groq API key is missing or invalid. Please set it again in the sidebar.")
-                        st.stop()
+        if st.button("Get Recommendations for Abnormal Values", type="primary", use_container_width=True):
+            with st.spinner("Generating general suggestions..."):
+                try:
+                    abnormal_context = st.session_state.rag_chain.invoke(
+                        {"input": "any abnormal report"}
+                    )["answer"].strip()
 
-                    # Get abnormal values from report
-                    abnormal_context = st.session_state.rag_chain.invoke({"input": "any abnormal report"})["answer"].strip()
-
-                    # New prompt for recommendations
                     rec_prompt_template = """You are a general health information assistant — NOT a doctor. You NEVER prescribe, recommend or advise taking any medicine.
-
 Based ONLY on the abnormal lab values below:
-
 For each abnormal value:
 - Suggest common lifestyle and diet changes
 - Mention the most common medicine class doctors sometimes consider
@@ -227,35 +249,23 @@ For each abnormal value:
 - ALWAYS start medicine mention with: "Doctors sometimes consider medicines from the class of..."
 - NEVER use words like "take", "prescribe", "you should", "recommended dose"
 - NEVER give dosage, duration, brand names, or any instruction to use medicine
-
 MANDATORY ENDING (must appear exactly):
 "This is NOT medical advice. NEVER take any medicine based on this information. Only a qualified doctor can diagnose you, decide if any treatment is needed, and prescribe the correct medicine if appropriate."
-
 Abnormal values from report:
 {abnormal_context}
-
 Answer in bullet points. Be extremely cautious and responsible."""
 
                     rec_prompt = ChatPromptTemplate.from_template(rec_prompt_template)
-
-                    # Use same LLM — with safety
                     rec_llm = ChatGroq(
                         model="llama-3.3-70b-versatile",
                         temperature=0.2,
                         max_tokens=800,
                         api_key=st.session_state.groq_api_key
                     )
-
-                    # Simple chain for recommendations (no retriever needed, just prompt)
                     rec_chain = rec_prompt | rec_llm
-
-                    try:
-                        rec_response = rec_chain.invoke({"abnormal_context": abnormal_context})
-                        rec_answer = rec_response.content.strip()
-                        st.markdown(rec_answer)
-                    except Exception as e:
-                        st.error(f"Error generating recommendations: {str(e)}")
+                    rec_response = rec_chain.invoke({"abnormal_context": abnormal_context})
+                    st.markdown(rec_response.content.strip())
+                except Exception as e:
+                    st.error(f"Error generating recommendations: {str(e)}")
 
             st.caption("These are general ideas only. Always see a doctor for real advice.")
-
-# Note: Add the remaining code from your original script (chat_message loop, query input, recommendations button, etc.) to complete app.py.
