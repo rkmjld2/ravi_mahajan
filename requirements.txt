@@ -1,0 +1,12 @@
+streamlit==1.29.0
+pandas==2.1.4
+langchain-text-splitters==0.0.1
+langchain-community==0.0.20
+langchain-huggingface==0.0.3
+langchain-core==0.1.23
+langchain-groq==0.0.1
+groq==0.4.1
+mysql-connector-python==8.3.0
+sentence-transformers==2.2.2
+torch==2.1.2
+faiss-cpu==1.7.4
