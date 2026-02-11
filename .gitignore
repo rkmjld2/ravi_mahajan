@@ -1,6 +1,68 @@
-# Secrets & local config
-secrets.toml
-.env
-*.pem.private
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+.streamlit/runtime/
+*.streamlit/
+
+# Data
+data/
+*.csv
+*.pkl
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+ehthumbs.db
+ehthumbs_vista.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+"secrets.toml" 
+"secrets_ok.txt" 
+"secrets.toml" 
+"secrets_ok.txt" 
+"secrets.toml" 
+"secrets_ok.txt" 
+".env"            # just to be 100% sure
+"secrets.toml"      
+"secrets_ok.txt"    
+".env"              
+"*.key"             
+"*.secret*"         
+"*.pem.private"     
+"secrets.toml" 
+"secrets_ok.txt" 
+".env" 
+"secrets.toml" 
+"secrets_ok.txt" 
+".env" 
+.env 
+secrets.toml 
+secrets_ok.txt 
+"*.key" 
+"*.secret" 
