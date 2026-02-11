@@ -1,4 +1,6 @@
+# Secrets & local config
+secrets.toml
+.env
+*.pem.private
 __pycache__/
 *.pyc
-.env
-.streamlit/secrets.toml
