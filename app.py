@@ -150,7 +150,30 @@ Total Cholesterol,210,mg/dL,<200,H""",
                 prompt = ChatPromptTemplate.from_template("""
 You are a lab assistant. Answer using ONLY the report data below.
 Never diagnose diseases. Report values, flags, ranges only.
+##added here
+ # New prompt for recommendations
 
+                    rec_prompt_template = """You are a general health information assistant.
+Based ONLY on the abnormal lab values below:
+
+For each abnormal value:
+- Suggest common lifestyle and diet changes
+- Mention the most common medicine class doctors sometimes consider
+- If the condition is very well-known, you may give 1–2 extremely common generic medicine examples (only ferrous sulfate for iron, metformin for glucose, atorvastatin/rosuvastatin for cholesterol — nothing else)
+- ALWAYS start medicine mention with: "Doctors sometimes consider medicines from the class of..."
+- NEVER use words like "take", "prescribe", "you should", "recommended dose"
+- NEVER give dosage, duration, brand names, or any instruction to use medicine
+
+MANDATORY ENDING (must appear exactly):
+"This is NOT medical advice. NEVER take any medicine based on this information. Only a qualified doctor can diagnose you, decide if any treatment is needed, and prescribe the correct medicine if appropriate."
+
+Abnormal values from report:
+{abnormal_context}
+
+Answer in bullet points, be concise and cautious."""
+
+
+# close here 
 Report: {context}
 Question: {input}
 Answer (include units/flags):""")
@@ -226,3 +249,4 @@ with tab2:
     INSERT INTO blood_reports (timestamp, test_name, result, unit, ref_range, flag)
     ```
     """)
+
