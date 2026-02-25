@@ -159,33 +159,36 @@ Total Cholesterol,210,mg/dL,<200,H"""
 
                 # Improved prompt with compact abnormal summary at the top
 prompt = ChatPromptTemplate.from_template(
-    """You are a concise lab report assistant.
-Answer using ONLY the blood report data provided.
-Never diagnose. Never advise treatment or lifestyle changes.
-Stick strictly to facts: values, units, reference ranges, flags.
+    """You are a strict lab report reader. You MUST follow these rules exactly:
 
-When mentioning any abnormal result in your answer, you **MUST** use **exactly** this compact format — do NOT add explanations like "below range of", "above range of", "low", "high", etc.:
+1. NEVER diagnose, explain causes, suggest diet, lifestyle, or treatment.
+2. NEVER use phrases like: "below range", "above range", "low", "high", "elevated", "decreased", "normal", etc.
+3. When you mention or list ANY abnormal result — you MUST copy the exact line format below — NO CHANGES allowed.
+4. Do NOT rephrase, expand, or add any extra words around the values/ranges/flags.
+5. Answer ONLY using bullet points. Each bullet must start with •
+6. If the question is about abnormal results — list ONLY the abnormal ones using the exact format.
 
-• Test name: value unit (reference range, FLAG)
-
-Examples (use this style every time):
+Allowed abnormal line format (copy exactly — change nothing):
 • Hemoglobin: 12.4 g/dL (13.0 - 17.0, L)
 • Glucose Fasting: 102.0 mg/dL (70 - 99, H)
 • Total Cholesterol: 210.0 mg/dL (<200, H)
 
-Abnormal results (use ONLY the format above):
+Abnormal values available (use ONLY these lines when relevant):
 {abnormal_summary}
 
-Full report:
+Full report (use only when question asks for specific normal test):
 {context}
 
 Question: {input}
 
-Answer very concisely. When referring to abnormal values — copy the exact line format from above. Include units and flags. Do NOT explain or rephrase the ranges/flags.
+Your answer must be:
+- Only bullet points starting with •
+- Only the exact abnormal lines when talking about abnormal results
+- Very short and factual
 """)
 
 
-                )
+             
 
                 llm = ChatGroq(
                     model="llama-3.3-70b-versatile",
@@ -268,4 +271,5 @@ with tab2:
 
     The AI only uses your report — no diagnosis, no advice.
     """)
+
 
